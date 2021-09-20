@@ -46,10 +46,9 @@ brackets. Example: [1, 3, 5]
 
 `start_time` and `end_time` can be a time with hour column minutes,
 such as: `17:00` or one of the following keywords: `sunrise`,
-`sunset`, `solar_noon`, `day_length`, `civil_twilight_begin`,
-`civil_twilight_end`, `nautical_twilight_begin`,
-`nautical_twilight_end`, `astronomical_twilight_begin`,
-`astronomical_twilight_end`,
+`sunset`, `solar_noon`, `civil_twilight_begin`, `civil_twilight_end`,
+`nautical_twilight_begin`, `nautical_twilight_end`,
+`astronomical_twilight_begin`, `astronomical_twilight_end`,
 
 You can use the files `lights-example.json` and `tasks-example.dat` as
 a starting point for your own configuration.
