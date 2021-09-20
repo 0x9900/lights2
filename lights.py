@@ -25,7 +25,7 @@ logging.basicConfig(format='%(asctime)s %(levelname)s[%(process)d]: %(message)s'
 
 SLEEP_TIME = 60
 CONFIG_FILE = '/etc/lights.json'
-EPHEMERIDE_FILE = '/tmp/ephemeride.pkl'
+EPHEMERIDES_FILE = '/tmp/ephemerides.pkl'
 MANDATORY_FIELDS = {'ports', 'local_tz', 'latitude', 'longitude', 'taskfile'}
 
 class Config:
@@ -104,19 +104,19 @@ class Lights:
     return status
 
 
-def ephemeride(lat, lon, timez):
+def ephemerides(lat, lon, timez):
   """Get the sunset and runrise information"""
   try:
-    st_mtime = os.stat(EPHEMERIDE_FILE).st_mtime
+    st_mtime = os.stat(EPHEMERIDES_FILE).st_mtime
   except FileNotFoundError:
     st_mtime = None
 
   if st_mtime is not None and st_mtime + 86400 > time.time():
-    with open(EPHEMERIDE_FILE, 'rb') as fdsun:
+    with open(EPHEMERIDES_FILE, 'rb') as fdsun:
       suninfo = pickle.loads(fdsun.read())
     return suninfo
 
-  logging.info('Download Ephemeride')
+  logging.info('Download Ephemerides')
   now = datetime.now()
   params = dict(lat=lat, lng=lon, formatted=0, date=now.strftime('%Y-%m-%d'))
   url = 'https://api.sunrise-sunset.org/json'
@@ -125,7 +125,7 @@ def ephemeride(lat, lon, timez):
     data = resp.json()
   except Exception as err:
     logging.error(err)          # Error reading the sun info, return yesterday's values
-    with open(EPHEMERIDE_FILE, 'rb') as fdsun:
+    with open(EPHEMERIDES_FILE, 'rb') as fdsun:
       suninfo = pickle.loads(fdsun.read())
     return suninfo
 
@@ -137,7 +137,7 @@ def ephemeride(lat, lon, timez):
     else:
       suninfo[key] = datetime.fromisoformat(val).astimezone(tzone)
 
-  with open(EPHEMERIDE_FILE, 'wb') as fdsun:
+  with open(EPHEMERIDES_FILE, 'wb') as fdsun:
     fdsun.write(pickle.dumps(suninfo))
 
   return suninfo
@@ -153,7 +153,7 @@ def build_task(config):
   format: "[lights] : start_time : end_time : week_day"
   """
   tasks = []
-  sun = ephemeride(config.latitude, config.longitude, config.local_tz)
+  sun = ephemerides(config.latitude, config.longitude, config.local_tz)
 
   try:
     fdt = open(config.taskfile, 'r')
