@@ -95,9 +95,9 @@ class Lights:
 
   def status(self):
     status = {}
-    st_msg = {0: 'ON', 1: 'Off'}
-    for port in self._ports:
-      status[port] = st_msg[gpio.input(port)]
+    st_msg = {0: 'On', 1: 'Off'}
+    for index, port in enumerate(self._ports):
+      status[index + 1] = st_msg[gpio.input(port)]
     return status
 
 
@@ -109,7 +109,7 @@ def ephemerides(lat, lon, timez):
     st_mtime = None
 
   if st_mtime is not None and st_mtime + 86400 > time.time():
-    with open(EPHEMERIDES_FILE, 'rb', encoding='utf-8') as fdsun:
+    with open(EPHEMERIDES_FILE, 'rb') as fdsun:
       suninfo = pickle.loads(fdsun.read())
     return suninfo
 
@@ -122,7 +122,7 @@ def ephemerides(lat, lon, timez):
     data = resp.json()
   except Exception as err:
     logging.error(err)          # Error reading the sun info, return yesterday's values
-    with open(EPHEMERIDES_FILE, 'rb', encoding='utf-8') as fdsun:
+    with open(EPHEMERIDES_FILE, 'rb') as fdsun:
       suninfo = pickle.loads(fdsun.read())
     return suninfo
 
@@ -134,7 +134,7 @@ def ephemerides(lat, lon, timez):
     else:
       suninfo[key] = datetime.fromisoformat(val).astimezone(tzone)
 
-  with open(EPHEMERIDES_FILE, 'wb', encoding='utf-8') as fdsun:
+  with open(EPHEMERIDES_FILE, 'wb') as fdsun:
     fdsun.write(pickle.dumps(suninfo))
 
   return suninfo
@@ -224,17 +224,53 @@ def run_tasks(tasks, _ports, lights):
 def main():
   parser = argparse.ArgumentParser(description='Garden lights')
   parser.add_argument('--config-file', default=CONFIG_FILE, help='Turn off all the lights')
+  on_off = parser.add_mutually_exclusive_group()
+  on_off.add_argument('--off', nargs='*', type=int, help='Turn off all the lights')
+  on_off.add_argument('--on', nargs='*', type=int, help='Turn on all the lights')
+  on_off.add_argument('--status', action='store_true', help='Checkt the status of each port')
   pargs = parser.parse_args()
 
   config = Config(pargs.config_file)
   lights = Lights(config.ports)
+
+  if pargs.on is not None:
+    try:
+      if pargs.on == []:
+        ports = config.ports
+      else:
+        ports = [config.ports[i-1] for i in pargs.on]
+      lights.on(ports)
+      logging.info(lights)
+    except IndexError:
+      logging.error('Only the ports: %s are configured', list(range(len(config.ports))))
+      sys.exit(os.EX_USAGE)
+    return
+  if pargs.off is not None:
+    try:
+      if pargs.off == []:
+        ports = config.ports
+      else:
+        ports = [config.ports[i-1] for i in pargs.off]
+      lights.off(ports)
+      logging.info(lights)
+    except IndexError:
+      logging.error('Only the ports: %s are configured', list(range(len(config.ports))))
+      sys.exit(os.EX_USAGE)
+    return
+
+  if pargs.status:
+    logging.info(lights)
+    return
+
   while True:
     try:
       tasks = build_task(config)
-    except (UnboundLocalError, ValueError):
+    except (UnboundLocalError, ValueError) as err:
+      logging.error('Error: %s', err)
       logging.error('%s Syntax error', config.taskfile)
       sys.exit(os.EX_CONFIG)
-    except IndexError:
+    except IndexError as err:
+      logging.error('Error: %s', err)
       logging.error('Ports error %s', config.taskfile)
       sys.exit(os.EX_CONFIG)
 
