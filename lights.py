@@ -3,19 +3,16 @@
 # pylint: disable=missing-docstring
 
 import argparse
+import json
 import logging
 import os
 import pickle
-import random
-import signal
 import sys
 import time
 
 from datetime import datetime
-from datetime import timedelta
 
 import RPi.GPIO as gpio
-import json
 import pytz
 import requests
 
@@ -46,7 +43,7 @@ class Config:
       sys.exit(os.EX_CONFIG)
 
     try:
-      with open(config_file, 'r') as confd:
+      with open(config_file, 'r', encoding='utf-8') as confd:
         lines = []
         for line in confd:
           line = line.strip()
@@ -78,19 +75,19 @@ class Lights:
     for port in self._ports:
       gpio.setup(port, gpio.OUT)
 
-  def off(self, ports, sleep=0.5):
+  def off(self, ports, sleep=0.25):
     for port in ports:
       if port not in self._ports:
         continue
       gpio.output(port, gpio.HIGH)
-      time.sleep(.25)
+      time.sleep(sleep)
 
   def on(self, ports, sleep=0.25):
     for port in ports:
       if port not in self._ports:
         continue
       gpio.output(port, gpio.LOW)
-      time.sleep(.25)
+      time.sleep(sleep)
 
   def __str__(self):
     status = self.status().items()
@@ -112,7 +109,7 @@ def ephemerides(lat, lon, timez):
     st_mtime = None
 
   if st_mtime is not None and st_mtime + 86400 > time.time():
-    with open(EPHEMERIDES_FILE, 'rb') as fdsun:
+    with open(EPHEMERIDES_FILE, 'rb', encoding='utf-8') as fdsun:
       suninfo = pickle.loads(fdsun.read())
     return suninfo
 
@@ -125,7 +122,7 @@ def ephemerides(lat, lon, timez):
     data = resp.json()
   except Exception as err:
     logging.error(err)          # Error reading the sun info, return yesterday's values
-    with open(EPHEMERIDES_FILE, 'rb') as fdsun:
+    with open(EPHEMERIDES_FILE, 'rb', encoding='utf-8') as fdsun:
       suninfo = pickle.loads(fdsun.read())
     return suninfo
 
@@ -137,15 +134,10 @@ def ephemerides(lat, lon, timez):
     else:
       suninfo[key] = datetime.fromisoformat(val).astimezone(tzone)
 
-  with open(EPHEMERIDES_FILE, 'wb') as fdsun:
+  with open(EPHEMERIDES_FILE, 'wb', encoding='utf-8') as fdsun:
     fdsun.write(pickle.dumps(suninfo))
 
   return suninfo
-
-
-def check_status(lights, ports=None):
-  status = lights.status(ports)
-  logging.info(', '.join([f"{k:02d}:{v}" for k, v in status.items()]))
 
 
 def build_task(config):
@@ -153,20 +145,21 @@ def build_task(config):
   format: "[lights] : start_time : end_time : week_day"
   """
   tasks = []
-  sun = ephemerides(config.latitude, config.longitude, config.local_tz)
-
   try:
-    fdt = open(config.taskfile, 'r')
+    fdt = open(config.taskfile, 'r', encoding='utf-8')
   except (AttributeError, FileNotFoundError) as err:
     logging.error(err)
     return tasks
 
+  sun = ephemerides(config.latitude, config.longitude, config.local_tz)
   for line in fdt:
     line = line.strip()
     if not line or line.startswith('#'):
       continue
 
     _lights, _start, _end, _days = line.split()
+
+    # process lights
     if _lights == '*':
       ports = config.ports
     elif _lights.startswith('[') and _lights.endswith(']'):
@@ -175,16 +168,19 @@ def build_task(config):
     elif _lights.isdigit():
       ports = [config.ports[int(_lights) - 1]]
 
+    # process task start (on)
     if _start in sun:
       start = int(sun[_start].strftime('%H%M'))
     elif ':' in _start:
       start = int(_start.replace(':', ''))
 
+    # process task end (off)
     if _end in sun:
       end = int(sun[_end].strftime('%H%M'))
     elif ':' in _end:
       end = int(_end.replace(':', ''))
 
+    # process days of the week
     if _days == '*':
       days = range(7)
     elif _days.startswith('['):
@@ -199,8 +195,8 @@ def build_task(config):
 
 def run_tasks(tasks, _ports, lights):
   # this is to chance the current lights state. The we will only log when the state change.
-  if not hasattr(run_tasks, '_previous_state'):
-    run_tasks._previous_state = {}
+  if not hasattr(run_tasks, 'previous_state'):
+    run_tasks.previous_state = {}
 
   if not tasks:
     return
@@ -220,8 +216,8 @@ def run_tasks(tasks, _ports, lights):
   lights.off([p for p, a in actions.items() if not a])
   lights.on([p for p, a in actions.items() if a])
 
-  if run_tasks._previous_state != actions:
-    run_tasks._previous_state = actions
+  if run_tasks.previous_state != actions:
+    run_tasks.previous_state = actions
     logging.info("%s", lights)
 
 
