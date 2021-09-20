@@ -1,0 +1,15 @@
+[Unit]
+Description=Scheduler for garden lights
+After=network.target
+StartLimitIntervalSec=500
+StartLimitBurst=3
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=90
+ExecStart=/usr/local/bin/lights
+
+[Install]
+Alias=lights.service
+WantedBy=multi-user.target

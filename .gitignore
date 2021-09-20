@@ -1,0 +1,10 @@
+.DS_Store
+*~
+*.pyc
+*.ipynb
+.ipynb_checkpoints/
+/*.egg-info/
+/build/
+/dist/
+upload.sh
+m.py

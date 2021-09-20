@@ -1,0 +1,7 @@
+#
+# Format
+# lights	start	off	week_day
+#
+
+*	sunset	22:00	*
+[2,3]	6:00	7:30	*
