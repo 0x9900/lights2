@@ -75,14 +75,14 @@ class Lights:
     for port in self._ports:
       gpio.setup(port, gpio.OUT)
 
-  def off(self, ports, sleep=0.25):
+  def off(self, ports, sleep=0.5):
     for port in ports:
       if port not in self._ports:
         continue
       gpio.output(port, gpio.HIGH)
       time.sleep(sleep)
 
-  def on(self, ports, sleep=0.25):
+  def on(self, ports, sleep=0.5):
     for port in ports:
       if port not in self._ports:
         continue
