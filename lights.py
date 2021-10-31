@@ -202,7 +202,7 @@ def run_tasks(tasks, _ports, lights):
     return
 
   now = datetime.now()
-  day = now.weekday()
+  day = now.isoweekday()        # 1 = monday, 7 = sunday
   tod = int(now.strftime('%H%M'))
   actions = {p: False for p in _ports}
 
