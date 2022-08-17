@@ -113,13 +113,13 @@ def ephemerides(lat, lon, timez):
       suninfo = pickle.loads(fdsun.read())
     return suninfo
 
-  logging.info('Download Ephemerides')
   now = datetime.now()
   params = dict(lat=lat, lng=lon, formatted=0, date=now.strftime('%Y-%m-%d'))
   url = 'https://api.sunrise-sunset.org/json'
   try:
-    resp = requests.get(url=url, params=params, timeout=(3, 10))
+    resp = requests.get(url=url, params=params, timeout=(3, 10), verify=False)
     data = resp.json()
+    logging.info('Download Ephemerides: %s', resp.request.url)
   except Exception as err:
     logging.error(err)          # Error reading the sun info, return yesterday's values
     with open(EPHEMERIDES_FILE, 'rb') as fdsun:
