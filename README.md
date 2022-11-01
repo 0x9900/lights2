@@ -63,3 +63,4 @@ The Pi-Zero has more that enough power for that task.
 
 
 ![Distances](misc/IMG_0624.JPG)
+
